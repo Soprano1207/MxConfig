@@ -1,0 +1,29 @@
+input[type="file"] {
+  cursor: pointer;
+}
+
+a {
+  cursor: pointer;
+}
+
+.input__file {
+  display: none;
+  appearance: none;
+  background-color: initial;
+  cursor: default;
+  align-items: baseline;
+  color: inherit;
+  text-overflow: ellipsis;
+  text-align: start !important;
+  padding: initial;
+  border: initial;
+  white-space: pre;
+  overflow: hidden !important;
+}
+
+.focus\:border-t-transparent:focus {
+  border-top-color: unset !important;
+}
+.border-t-transparent {
+  border-top-color: rgb(176 190 197 / var(--tw-border-opacity)) !important;
+}

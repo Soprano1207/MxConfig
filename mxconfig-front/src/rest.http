@@ -1,0 +1,10 @@
+# GET http://0.0.0.0:8080/api/components HTTP/1.1
+
+POST http://0.0.0.0:8080/api/components HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Intel Core i7 SkyLake",
+    "brand": "Intel",
+    "cpu": "Intel Core i7"
+}
