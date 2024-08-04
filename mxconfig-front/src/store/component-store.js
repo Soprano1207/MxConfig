@@ -30,10 +30,18 @@ class ComponentStore {
   fetchConfigurationComponentsAction(componentType) {
     console.log("fetchConfigurationComponentsAction called");
 
-    if (!Object.keys(configuratorStore.configurations).length) {
+    if (!Object.keys(configuratorStore.userConfigurations).length) {
       this.fetchComponentsAction(componentType)
     } else {
-      const filter = "?" + qsString(configuratorStore.configurations);
+      const components = configuratorStore.userConfigurations;
+      const filterData = {};
+      for (const key in components) {
+        if (Object.hasOwnProperty.call(components, key)) {
+          filterData[key] = components[key]._id;
+        }
+      }
+
+      const filter = "?" + qsString(filterData);
       this.components = fromPromise(fetchConfigurationComponents(componentType, filter));
     }
   }

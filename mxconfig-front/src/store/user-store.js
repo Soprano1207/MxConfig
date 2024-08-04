@@ -1,6 +1,6 @@
 import {makeAutoObservable} from "mobx"
 import {qsString} from "../Global";
-import {signIn, signUp} from "../api/user-api";
+import {signIn, signUp, authorization} from "../api/user-api";
 import axios from "axios";
 
 class UserStore {
@@ -10,7 +10,7 @@ class UserStore {
     firstName: "",
     lastName: "",
     officepost: "",
-    img: "https://docs.material-tailwind.com/img/team-3.jpg",
+    img: "",
     token: "",
   };
 
@@ -18,14 +18,23 @@ class UserStore {
     makeAutoObservable(this);
   }
 
+  async authorization() {
+    const response = await authorization();
+    if (response.status === "error") {
+      throw new Error(response.message);
+    }
+
+    this.user = {...this.user, ...response.data}
+  }
+
   async signIn(data) {
     const response = await signIn(data)
-
     if (response.status === "error") {
       throw new Error(response.message);
     }
 
     axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    setLocalStorageToken(response.data.token);
 
     this.user = {...this.user, ...response.data}
   }
@@ -38,6 +47,7 @@ class UserStore {
     }
 
     axios.defaults.headers.common['Authorization'] = `Bearer ${response.data}`;
+    setLocalStorageToken(response.data);
     
     const userDataObj = {};
     Object.keys(this.user).forEach((key) => {
@@ -54,15 +64,20 @@ class UserStore {
     })
 
     delete axios.defaults.headers.common['Authorization'];
+    clearLocalStorageToken();
     this.user = userDataObj;
   }
 
-  fetchConfigurationsAction(componentType, filter) {
-    console.log("fetchConfigurationsAction called");
-    filter = typeof filter === "object" 
-        ? "?" + qsString(filter) 
-        : filter; 
+  async changeUserInfo() {
+
   }
+}
+
+function setLocalStorageToken(token) {
+  localStorage.setItem("token", token);
+}
+function clearLocalStorageToken() {
+  localStorage.removeItem("token");
 }
 
 export default new UserStore()

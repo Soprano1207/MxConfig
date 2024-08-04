@@ -12,13 +12,13 @@ import configuratorStore from "../../store/configurator-store";
 
 export function Components() {
   const { componentType } = useParams();
-  
+  const { pathname } = window.location;
+
   // const getComponents
 
   React.useEffect(() => {
     console.log(componentType);
-    const {pathname} = window.location;
-  
+
     componentStore.fetchFilterComponentAction(componentType);
 
     if (pathname.includes("configurator")) {
@@ -27,8 +27,8 @@ export function Components() {
       componentStore.fetchComponentsAction(componentType);
     }
 
-      
-  }, [componentType]);
+
+  }, [componentType, pathname]);
 
   if (!componentStore.components || !componentStore.filterComponents) {
     return <Loading />;
@@ -40,7 +40,7 @@ export function Components() {
       rejected: (error) => <div>Ошибка: {error.message}</div>,
       fulfilled: ({ data }) => {
         return (
-          <ComponentsSideBar componentStore={componentStore} filterSecondary={data} componentType={componentType}/>
+          <ComponentsSideBar componentStore={componentStore} filterSecondary={data} componentType={componentType} />
         )
       },
     });

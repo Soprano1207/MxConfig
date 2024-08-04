@@ -3,7 +3,6 @@ package repository
 import (
 	"fmt"
 	"mxconfig-back/pkg/utils"
-	"reflect"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -40,6 +39,6 @@ func (r *ComponentsMongoDB) CreateComponent(st *interface{}) {
 	fmt.Print(st)
 }
 
-func (r *ComponentsMongoDB) FindAll(collectionName string, filter bson.D, result reflect.Value) (interface{}, error) {
+func (r *ComponentsMongoDB) FindAll(collectionName string, filter bson.D, result interface{}) (interface{}, error) {
 	return utils.FindAll(r.db, collectionName, filter, result)
 }

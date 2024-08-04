@@ -2,10 +2,9 @@ package service
 
 import (
 	"fmt"
+	"mxconfig-back/pkg/entity"
 	"mxconfig-back/pkg/repository"
 	"mxconfig-back/pkg/utils"
-	"reflect"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,20 +21,10 @@ func NewComponentService(repos repository.Components) *ComponentService {
 
 // ФИЛЬТР
 func (s *ComponentService) GetFilterComponents(gc *gin.Context) (interface{}, error) {
-	componentType, err := utils.GetTypeComponent(gc.Param("type"))
-	if err != nil {
-		return nil, err
-	}
-	componentStruct, err := utils.GetStructCompnent(componentType)
-	if err != nil {
-		return nil, err
-	}
+	filterType := gc.Param("type")
+	filterStrct := entity.Filter{}
 
-	collectionName := strings.ToLower(componentStruct.Name())
-	sliceType := reflect.SliceOf(componentStruct)
-	result := reflect.New(sliceType).Elem()
-
-	filters, err := s.repos.FindAll(collectionName, bson.D{}, result)
+	filters, err := s.repos.FindAll(filterType, bson.D{}, &filterStrct)
 	if err != nil {
 		return nil, err
 	}
@@ -49,11 +38,8 @@ func (s *ComponentService) CreateComponent(st *interface{}) {
 }
 
 func (s *ComponentService) GetComponents(gc *gin.Context) (interface{}, error) {
-	componentType, err := utils.GetTypeComponent(gc.Param("type"))
-	if err != nil {
-		return nil, err
-	}
-	componentStruct, err := utils.GetStructCompnent(componentType)
+	componentType := gc.Param("type")
+	component, err := utils.GetTypeComponent(componentType)
 	if err != nil {
 		return nil, err
 	}
@@ -78,11 +64,7 @@ func (s *ComponentService) GetComponents(gc *gin.Context) (interface{}, error) {
 	jsonFilter, _ := bson.MarshalExtJSON(filter, true, true)
 	fmt.Println(string(jsonFilter))
 
-	collectionName := strings.ToLower(componentStruct.Name())
-	sliceType := reflect.SliceOf(componentStruct)
-	resultType := reflect.New(sliceType).Elem()
-
-	components, err := s.repos.FindAll(collectionName, filter, resultType)
+	components, err := s.repos.FindAll(componentType, filter, component)
 	if err != nil {
 		return nil, err
 	}

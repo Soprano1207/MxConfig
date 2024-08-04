@@ -20,6 +20,7 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/solid";
 import ErrorTypography from '../components/ErrorTypography';
+import userStore from '../store/user-store';
 
 /**
  * Проверить дату, а то как-то странно записывается
@@ -47,11 +48,13 @@ export default React.memo(function ProfileInformation({ profileData, setProfileD
 
 
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (date) {
       data.birthday = date;
     }
-    console.log(data)
+
+    const response = await userStore.changeUserInfo();
+    console.log(response)
   }
 
   return (

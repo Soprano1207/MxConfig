@@ -6,6 +6,7 @@ import { Typography, Input, Button, Alert } from "@material-tailwind/react";
 import { EyeSlashIcon, EyeIcon } from "@heroicons/react/24/solid";
 import ErrorTypography from "../../components/ErrorTypography";
 import { UserContext } from "../../context/UserContext";
+import ConfiguratorStore from "../../store/configurator-store";
 
 export default function Authorization({ }) {
   const UserStore = React.useContext(UserContext);
@@ -21,10 +22,13 @@ export default function Authorization({ }) {
     try {
       if (isSigin) {
         await UserStore.signIn(data);
+        await ConfiguratorStore.fetchUserConfigurationAction();
         return;
       }
 
       await UserStore.signUp(data)
+
+      navigate("/")
 
     } catch (error) {
       setError(error.message)

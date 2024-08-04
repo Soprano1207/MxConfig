@@ -1,9 +1,10 @@
 import {makeAutoObservable} from "mobx"
 import {qsString} from "../Global";
-import { addToConfiguration } from "../api/configurator-api";
+import { addToConfiguration, removeFromConfiguration, fetchUserConfiguration } from "../api/configurator-api";
 
 class ConfiguratorStore {
-  configurations = {motherboard: "669655fb1dbe3921b7c76a01"};
+  userConfigurations = {};
+
 
   constructor() {
     makeAutoObservable(this);
@@ -11,24 +12,36 @@ class ConfiguratorStore {
 
   async addToConfiguration(componentType, id) {
     console.log(componentType, id);
-    const currentConfiguration = this.configurations;
-    currentConfiguration[componentType] = id;
     
-    const response = await addToConfiguration(currentConfiguration);
-
-    console.log(response);
+    const response = await addToConfiguration({componentType, id});
+    return response.data;
   }
 
-  fetchUserConfigurationsAction() { //штука сейчас может получить конфигурации любого пользователя (опасно)
-    console.log("fetchUserConfigurationsAction called");
+  async removeFromConfiguration(componentType, id) {
+    console.log(componentType, id);
+    
+    const response = await removeFromConfiguration({componentType, id});
+    return response.data;
   }
 
-  fetchConfigurationsAction(componentType, filter) {
-    console.log("fetchConfigurationsAction called");
-    filter = typeof filter === "object" 
-        ? "?" + qsString(filter) 
-        : filter; 
+  async fetchUserConfigurationAction() {
+    console.log("fetchUserConfigurationAction called");
+    const response = await fetchUserConfiguration();
+    
+    if (response.status === "error") {
+      throw new Error(response.message);
+    }
+
+    this.userConfigurations = response.data;    
+    return response;
   }
+
+  // fetchuserConfigurationsAction(componentType, filter) {
+  //   console.log("fetchuserConfigurationsAction called");
+  //   filter = typeof filter === "object" 
+  //       ? "?" + qsString(filter) 
+  //       : filter; 
+  // }
 }
 
 export default new ConfiguratorStore()

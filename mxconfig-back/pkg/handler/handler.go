@@ -24,13 +24,15 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 		{
 			user.POST("/signin", h.SignIn)
 			user.POST("/signup", h.SignUp)
+			user.GET("/authorization", h.Authorization)
 		}
 
 		configurator := api.Group("/configurator")
 		{
-			configurator.POST("/add", h.Add)
-
+			configurator.POST("/addToConfiguration", h.AddToConfiguration)
+			configurator.POST("/removeFromConfiguration", h.RemoveFromConfiguration)
 			configurator.GET("/:type", h.GetConfigurationComponents)
+			configurator.GET("/getUserConfiguration", h.GetUserConfiguration)
 		}
 
 		components := api.Group("/components")

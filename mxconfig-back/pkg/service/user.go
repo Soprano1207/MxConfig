@@ -8,14 +8,10 @@ import (
 	"mxconfig-back/pkg/utils"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-var secretKey = []byte("my-hard-secret-key")
 
 type UserService struct {
 	repos repository.User
@@ -25,6 +21,25 @@ func NewUserService(userRepo repository.User) *UserService {
 	return &UserService{repos: userRepo}
 }
 
+func (s *UserService) Authorization(gc *gin.Context) (interface{}, error) {
+	token := gc.Request.Header["Authorization"][0][7:]
+
+	login, _, _, err := utils.ParseToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	var person entity.User
+
+	filter := bson.D{{Key: "login", Value: login}}
+	findedUser, err := s.repos.FindOne("user", filter, &person)
+	if err != nil {
+		return nil, err
+	}
+
+	return findedUser, nil
+}
+
 func (s *UserService) SignIn(gc *gin.Context) (interface{}, error) {
 	var user entity.User
 
@@ -32,7 +47,7 @@ func (s *UserService) SignIn(gc *gin.Context) (interface{}, error) {
 		return user, err
 	}
 
-	componentStruct, err := utils.GetStructCompnent(user)
+	componentStruct, err := utils.GetStruct(user)
 	if err != nil {
 		return user, err
 	}
@@ -64,16 +79,8 @@ func (s *UserService) SignUp(gc *gin.Context) (string, error) {
 		return "", errors.New("пароли не совпадают")
 	}
 
-	componentStruct, err := utils.GetStructCompnent(user)
-	if err != nil {
-		return "", err
-	}
-
-	userCollection := strings.ToLower(componentStruct.Name())
-	resultType := reflect.New(reflect.TypeOf(user)).Elem()
-
 	filter := bson.D{bson.E{Key: "login", Value: user.Login}}
-	result, err := s.repos.FindOne(userCollection, filter, resultType)
+	result, err := s.repos.FindOne("user", filter, &user)
 	if err != nil {
 		return "", err
 	}
@@ -82,7 +89,7 @@ func (s *UserService) SignUp(gc *gin.Context) (string, error) {
 	}
 
 	filter = bson.D{bson.E{Key: "email", Value: user.Email}}
-	findResult, err := s.repos.FindOne(userCollection, filter, resultType)
+	findResult, err := s.repos.FindOne("user", filter, &user)
 	if err != nil {
 		return "", err
 	}
@@ -90,7 +97,7 @@ func (s *UserService) SignUp(gc *gin.Context) (string, error) {
 		return "", errors.New("пользователь с таким email уже зарегистрирован")
 	}
 
-	createdToken, create, endTime, err := createToken(user)
+	createdToken, create, endTime, err := utils.CreateToken(user)
 	if err != nil {
 		return "", err
 	}
@@ -100,21 +107,14 @@ func (s *UserService) SignUp(gc *gin.Context) (string, error) {
 	token.EndTime = int(endTime)
 	token.Create = int(create)
 
-	tokenStruct, err := utils.GetStructCompnent(token)
-	if err != nil {
-		return "", err
-	}
-
-	tokenCollection := strings.ToLower(tokenStruct.Name())
-
-	_, err = s.repos.InsertOne(tokenCollection, token)
+	_, err = s.repos.InsertOne("token", token)
 	if err != nil {
 		return "", errors.New("возникла ошибка при создании токена")
 	}
 
 	user.Token = token.Token
 
-	insertUserResult, err := s.repos.InsertOne(userCollection, user)
+	insertUserResult, err := s.repos.InsertOne("user", user)
 	if err != nil {
 		return "", errors.New("возникла ошибка при создании пользователя")
 	}
@@ -122,23 +122,4 @@ func (s *UserService) SignUp(gc *gin.Context) (string, error) {
 	fmt.Printf("Inserted User ID: %v\n", insertUserResult.InsertedID)
 
 	return token.Token, nil
-}
-
-func createToken(user entity.User) (string, int64, int64, error) {
-	createTime := time.Now().Unix()
-	endTime := time.Now().Add(time.Hour).Unix()
-
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		// "sub": id
-		"login": user.Login,
-		"exp":   endTime,
-		"iat":   createTime,
-	})
-
-	tokenString, err := claims.SignedString(secretKey)
-	if err != nil {
-		return "", 0, 0, errors.New("ошибка создания токена")
-	}
-
-	return tokenString, createTime, endTime, nil
 }

@@ -15,11 +15,14 @@ type Component interface {
 type User interface {
 	SignIn(*gin.Context) (interface{}, error)
 	SignUp(*gin.Context) (string, error)
+	Authorization(*gin.Context) (interface{}, error)
 }
 
 type Configurator interface {
 	AddToConfiguration(*gin.Context) (interface{}, error)
+	RemoveFromConfiguration(*gin.Context) (interface{}, error)
 	GetConfigurationComponents(*gin.Context) (interface{}, error)
+	GetUserConfiguration(*gin.Context) (interface{}, error)
 }
 
 type Service struct {

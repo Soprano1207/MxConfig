@@ -27,46 +27,46 @@ const componentsMenuItems = [
   },
   {
     title: "Кулер",
-    link: "/components",
+    link: "/components/cooler",
     icon: Bars4Icon,
   },
   {
     title: "Оперативная память",
-    link: "/components",
+    link: "/components/ram",
     icon: SunIcon,
   },
   {
     title: "Видеокарта",
-    link: "/components",
+    link: "/components/videocard",
     icon: GlobeAmericasIcon,
   },
   {
     title: "Жесткий диск",
-    link: "/components",
+    link: "/components/hdd",
     icon: PhoneIcon,
   },
   {
     title: "SSD",
-    link: "/components",
+    link: "/components/ssd",
     icon: NewspaperIcon,
   },
   {
     title: "Блок питания",
-    link: "/components",
+    link: "/components/powersupply",
     icon: RectangleGroupIcon,
   },
   {
     title: "Корпус",
-    link: "/components",
+    link: "/components/case",
     icon: TagIcon,
   },
 ];
 
 const mainNav = [
-  {
-    label: "Главная",
-    link: "/",
-  },
+  // {
+  //   label: "Главная",
+  //   link: "/",
+  // },
   {
     label: "Конфигуратор",
     link: "/configurator",
@@ -75,14 +75,14 @@ const mainNav = [
     label: "Комплектующие",
     megaMenu: componentsMenuItems
   },
-  {
-    label: "Помощь",
-    link: "/help",
-  },
-  {
-    label: "О нас",
-    link: "/about",
-  }
+  // {
+  //   label: "Помощь",
+  //   link: "/help",
+  // },
+  // {
+  //   label: "О нас",
+  //   link: "/about",
+  // }
 ];
 
 export default function Template({ children }) {

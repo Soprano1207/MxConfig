@@ -5,11 +5,12 @@ import { Link } from 'react-router-dom';
 import { useParams } from "react-router-dom";
 import { tt } from '../data/translate';
 import ConfiguratorStore from '../store/configurator-store';
+import { useNavigate } from 'react-router-dom';
 
 
 export default function ComponentsListCard({ components }) {
   const { componentType } = useParams();
-  
+
 
   return (
     <section className="mx-auto">
@@ -37,22 +38,42 @@ export default function ComponentsListCard({ components }) {
 }
 
 
-export function ComponentCard({ _id, img, title, brand, name, desc, price, componentType}) {
+export function ComponentCard({ _id, img, title, brand, name, desc, price, componentType }) {
+  const navigate = useNavigate();
 
   const addToConfiguration = async (event) => {
-    const {component, id} = event.currentTarget.dataset;
+    const { component, id } = event.currentTarget.dataset;
 
-    await ConfiguratorStore.addToConfiguration(component, id);
+    const result = await ConfiguratorStore.addToConfiguration(component, id);
+    if (result === 1) {
+      navigate("/configurator");
+    }
   }
+
+  const removeConfiguration = async (event) => {
+    const { component, id } = event.currentTarget.dataset;
+
+    const result = await ConfiguratorStore.removeFromConfiguration(component, id);
+    if (result === 1) {
+      window.location.reload()
+    }
+  }
+
+  const handleActionComponent = async (event) => {
+    componentType
+      ? addToConfiguration(event)
+      : removeConfiguration(event);
+  }
+
 
   return (
     <Card shadow={false} className="border border-gray-300 justify-between">
       <CardBody className='pb-0'>
         <div className=' h-52'>
-          <img src={"http://localhost:8080/images/" + img} alt={img} className="h-full m-auto object-contain" />
+          <img src={img ? "http://localhost:8080/images/" + img : "/public/img/image-not-found.png"} alt={img} className="h-full m-auto object-contain" />
         </div>
         {title &&
-          <Typography className="mb-2 text-center" color="blue-gray" variant="h6">
+          <Typography className="my-2 text-center" color="blue-gray" variant="h6">
             {tt.components[title]}
           </Typography>
         }
@@ -82,7 +103,7 @@ export function ComponentCard({ _id, img, title, brand, name, desc, price, compo
           </>
         }
         {_id
-          ? <IconButton onClick={addToConfiguration} data-id={_id} data-component={componentType} className="rounded-md"><i className="fas fa-plus" /></IconButton>
+          ? <IconButton onClick={handleActionComponent} data-id={_id} data-component={componentType ?? title} className="rounded-md"><i className="fas fa-plus" />{componentType ? "+" : "-"}</IconButton>
           : <Link to={title} className='w-full text-center'><Button className=''>Добавить</Button></Link>
         }
       </CardFooter>

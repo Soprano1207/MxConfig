@@ -9,6 +9,7 @@ type Motherboard struct {
 	Socket     string             `json:"socket"`
 	Formfactor string             `json:"formfactor"`
 	Chipset    string             `json:"chipset"`
+	Ramtype    string             `json:"ramtype"`
 	Img        string             `json:"img"`
 	Price      []int32            `json:"price"`
 }

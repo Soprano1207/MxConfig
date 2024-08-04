@@ -43,7 +43,7 @@ const profileMenuItems = [
   },
 ];
 
-function ProfileMenu({UserStore}) {
+function ProfileMenu({ UserStore }) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const closeMenu = () => setIsMenuOpen(false);
 
@@ -59,7 +59,7 @@ function ProfileMenu({UserStore}) {
             variant="circular"
             size="sm"
             alt="tania andrew"
-            src={UserStore?.user?.img}
+            src={UserStore?.user?.img || "public/img/image-not-found.png"}
           />
           <ChevronDownIcon
             strokeWidth={2.5}
@@ -88,19 +88,19 @@ function ProfileMenu({UserStore}) {
               </MenuItem>
             </Link>
           ) : (
-              <MenuItem
-                key={label}
-                onClick={() => onClick(UserStore)}
-                className="flex items-center gap-2 rounded"
-              >
-                {React.createElement(icon, {
-                  className: "h-4 w-4",
-                  strokeWidth: 2,
-                })}
-                <Typography as="span" variant="small" className="font-normal">
-                  {label}
-                </Typography>
-              </MenuItem>
+            <MenuItem
+              key={label}
+              onClick={() => onClick(UserStore)}
+              className="flex items-center gap-2 rounded"
+            >
+              {React.createElement(icon, {
+                className: "h-4 w-4",
+                strokeWidth: 2,
+              })}
+              <Typography as="span" variant="small" className="font-normal">
+                {label}
+              </Typography>
+            </MenuItem>
           );
         })}
       </MenuList>
@@ -235,7 +235,7 @@ export default function Header({ mainNav = [] }) {
           <IconButton variant="text">
             <BellIcon className="h-5 w-5 text-gray-400" />
           </IconButton>
-          <ProfileMenu UserStore={UserStore}/>
+          <ProfileMenu UserStore={UserStore} />
         </div>
         <IconButton
           size="sm"

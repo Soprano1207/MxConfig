@@ -6,7 +6,6 @@ import (
 	"mxconfig-back/pkg/entity"
 	"mxconfig-back/pkg/repository"
 	"mxconfig-back/pkg/utils"
-	"reflect"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -21,40 +20,151 @@ func NewConfiguratorService(configuratorRepo repository.Configurator) *Configura
 	return &ConfiguratorService{repos: configuratorRepo}
 }
 
-func (s *ConfiguratorService) AddToConfiguration(gc *gin.Context) (interface{}, error) {
+func (s *ConfiguratorService) GetUserConfiguration(gc *gin.Context) (interface{}, error) {
+	token := gc.Request.Header["Authorization"][0][7:]
 
-	mapData := make(map[string]string)
-	if err := gc.ShouldBindJSON(&mapData); err != nil {
+	login, _, _, err := utils.ParseToken(token)
+	if err != nil {
 		return nil, err
 	}
 
-	// mapComponents := make(map[string]interface{})
-	for key, value := range mapData {
-		strct, err := utils.GetTypeComponent(key)
-		if err != nil {
-			return nil, errors.New("ошибка определения типа компонента")
-		}
+	var person entity.User
 
-		resultType := reflect.New(reflect.TypeOf(strct)).Elem()
-
-		id, err := primitive.ObjectIDFromHex(value)
-		if err != nil {
-			return nil, errors.New("ошибка преобразования ID")
-		}
-
-		filter := bson.D{{Key: "_id", Value: id}}
-
-		result, err := s.repos.FindOne(key, filter, resultType)
-		if err != nil {
-			return nil, err
-		}
-
-		fmt.Println("")
-		fmt.Println(result)
+	filter := bson.D{{Key: "login", Value: login}}
+	findedUser, err := s.repos.FindOne("user", filter, &person)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, nil
+	if user, ok := findedUser.(*entity.User); ok {
+		mapDataComponents := make(map[string]interface{})
+		for key, value := range user.Configurations {
+			fmt.Printf("\n\nFOR: %v %v", key, value)
 
+			strct, err := utils.GetTypeComponent(key)
+			if err != nil {
+				return nil, errors.New("ошибка определения типа компонента")
+			}
+
+			filter := bson.D{{Key: "_id", Value: value}}
+
+			result, err := s.repos.FindOne(key, filter, strct)
+			if err != nil {
+				return nil, err
+			}
+
+			mapDataComponents[key] = result
+		}
+
+		return mapDataComponents, nil
+	} else {
+		return nil, errors.New("значение не принадлежит типу User")
+	}
+}
+
+func (s *ConfiguratorService) RemoveFromConfiguration(gc *gin.Context) (interface{}, error) {
+	var requestComponent entity.RequestComponent
+
+	if err := gc.ShouldBindJSON(&requestComponent); err != nil {
+		return "", err
+	}
+
+	authHeader := gc.Request.Header.Get("Authorization")
+	if len(authHeader) < 8 {
+		return nil, errors.New("неверный формат заголовка Authorization")
+	}
+
+	token := authHeader[7:]
+
+	login, _, _, err := utils.ParseToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	var person entity.User
+
+	filter := bson.D{{Key: "login", Value: login}}
+	findedUser, err := s.repos.FindOne("user", filter, &person)
+	if err != nil {
+		return nil, err
+	}
+
+	user, ok := findedUser.(*entity.User)
+	if !ok {
+		return nil, errors.New("пользователь не найден или имеет неверный тип")
+	}
+
+	delete(user.Configurations, requestComponent.ComponentType)
+
+	update := bson.M{
+		"$set": bson.M{
+			"configurations": user.Configurations,
+		},
+	}
+
+	result, err := s.repos.UpdateByID("user", user.ID, update)
+	if err != nil {
+		return "", errors.New("возникла ошибка при обновлении")
+	}
+
+	return result.ModifiedCount, nil
+}
+
+func (s *ConfiguratorService) AddToConfiguration(gc *gin.Context) (interface{}, error) {
+	var requestComponent entity.RequestComponent
+
+	if err := gc.ShouldBindJSON(&requestComponent); err != nil {
+		return "", err
+	}
+
+	authHeader := gc.Request.Header.Get("Authorization")
+	if len(authHeader) < 8 {
+		return nil, errors.New("неверный формат заголовка Authorization")
+	}
+
+	token := authHeader[7:]
+
+	login, _, _, err := utils.ParseToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	var person entity.User
+
+	filter := bson.D{{Key: "login", Value: login}}
+	findedUser, err := s.repos.FindOne("user", filter, &person)
+	if err != nil {
+		return nil, err
+	}
+
+	user, ok := findedUser.(*entity.User)
+	if !ok {
+		return nil, errors.New("пользователь не найден или имеет неверный тип")
+	}
+
+	if user.Configurations == nil {
+		user.Configurations = make(map[string]primitive.ObjectID)
+	}
+
+	id, err := primitive.ObjectIDFromHex(requestComponent.ComponentId)
+	if err != nil {
+		return nil, errors.New("ошибка преобразования ID")
+	}
+
+	user.Configurations[requestComponent.ComponentType] = id
+
+	update := bson.M{
+		"$set": bson.M{
+			"configurations": user.Configurations,
+		},
+	}
+
+	result, err := s.repos.UpdateByID("user", user.ID, update)
+	if err != nil {
+		return "", errors.New("возникла ошибка при обновлении")
+	}
+
+	return result.ModifiedCount, nil
 }
 
 func (s *ConfiguratorService) GetConfigurationComponents(gc *gin.Context) (interface{}, error) {
@@ -68,8 +178,6 @@ func (s *ConfiguratorService) GetConfigurationComponents(gc *gin.Context) (inter
 			return nil, errors.New("ошибка определения типа компонента")
 		}
 
-		resultType := reflect.New(reflect.TypeOf(strct)).Elem()
-
 		id, err := primitive.ObjectIDFromHex(value[0])
 		if err != nil {
 			return nil, errors.New("ошибка преобразования ID")
@@ -77,7 +185,7 @@ func (s *ConfiguratorService) GetConfigurationComponents(gc *gin.Context) (inter
 
 		filter := bson.D{{Key: "_id", Value: id}}
 
-		result, err := s.repos.FindOne(key, filter, resultType)
+		result, err := s.repos.FindOne(key, filter, strct)
 		if err != nil {
 			return nil, err
 		}
@@ -91,42 +199,126 @@ func (s *ConfiguratorService) GetConfigurationComponents(gc *gin.Context) (inter
 	case "processor":
 		return s.getProcessor(mapDataComponents)
 	case "motherboard":
-		s.getMotherboard(mapDataComponents)
-	}
+		return s.getMotherboard(mapDataComponents)
+	case "cooler":
+		return s.getCooler(mapDataComponents)
+	case "ram":
+		return s.getRam(mapDataComponents)
+	case "videocard":
+		return s.getVideocard(mapDataComponents)
+	case "hdd":
+		return s.getHdd(mapDataComponents)
+	case "ssd":
+		return s.getSsd(mapDataComponents)
+	case "powersupply":
+		return s.getPowersupply(mapDataComponents)
+	case "case":
+		return s.getCase(mapDataComponents)
 
-	return nil, nil
+	default:
+		return nil, errors.New("не удалось определить тип компонента на этапе конфигурации")
+	}
 }
 
-func (s *ConfiguratorService) getProcessor(mapDataComponents map[string]interface{}) (interface{}, error) {
+func (s *ConfiguratorService) getCase(mapDataComponents map[string]interface{}) (interface{}, error) {
 	// Получаем ключевые поля для процессора по которым будем фильтровать
+	component := "case"
+
 	filter := bson.D{}
 	for key, value := range mapDataComponents {
-		fmt.Println(key)
-
-		switch key {
-		case "motherboard":
-			if motherboard, ok := value.(entity.Motherboard); ok {
-				filter = append(filter, bson.E{Key: "socket", Value: motherboard.Socket})
-			} else {
-				return nil, errors.New("value is not of type entity.Motherboard")
-			}
-		}
+		fmt.Println(key, value)
 	}
 
-	componentType, err := utils.GetTypeComponent("processor")
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
 	if err != nil {
 		return nil, err
 	}
 
-	componentStruct, err := utils.GetStructCompnent(componentType)
+	return result, nil
+}
+func (s *ConfiguratorService) getPowersupply(mapDataComponents map[string]interface{}) (interface{}, error) {
+	// Получаем ключевые поля для процессора по которым будем фильтровать
+	component := "powersupply"
+
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key, value)
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
 	if err != nil {
 		return nil, err
 	}
 
-	sliceType := reflect.SliceOf(componentStruct)
-	resultType := reflect.New(sliceType).Elem()
+	return result, nil
+}
+func (s *ConfiguratorService) getSsd(mapDataComponents map[string]interface{}) (interface{}, error) {
+	// Получаем ключевые поля для процессора по которым будем фильтровать
+	component := "ssd"
 
-	result, err := s.repos.FindAll("processor", filter, resultType)
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key, value)
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+func (s *ConfiguratorService) getHdd(mapDataComponents map[string]interface{}) (interface{}, error) {
+	// Получаем ключевые поля для процессора по которым будем фильтровать
+	component := "hdd"
+
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key, value)
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+func (s *ConfiguratorService) getVideocard(mapDataComponents map[string]interface{}) (interface{}, error) {
+	// Получаем ключевые поля для процессора по которым будем фильтровать
+	component := "videocard"
+
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key, value)
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
 	if err != nil {
 		return nil, err
 	}
@@ -134,9 +326,139 @@ func (s *ConfiguratorService) getProcessor(mapDataComponents map[string]interfac
 	return result, nil
 }
 
-func (s *ConfiguratorService) getMotherboard(mapDataComponents map[string]interface{}) {
-	//получаем ключевые поля для материнки по которым будем фильтровать
+func (s *ConfiguratorService) getRam(mapDataComponents map[string]interface{}) (interface{}, error) {
+	// Получаем ключевые поля для процессора по которым будем фильтровать
+	component := "ram"
 
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key, value)
+		switch key {
+		case "motherboard":
+			if strct, ok := value.(*entity.Motherboard); ok {
+				filter = append(filter, bson.E{Key: "type", Value: strct.Ramtype})
+			} else {
+				return nil, errors.New("значение не принадлежит типу Motherboard")
+			}
+		}
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *ConfiguratorService) getProcessor(mapDataComponents map[string]interface{}) (interface{}, error) {
+	// Получаем ключевые поля для процессора по которым будем фильтровать
+	component := "processor"
+
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key)
+
+		switch key {
+		case "motherboard":
+			if strct, ok := value.(*entity.Motherboard); ok {
+				filter = append(filter, bson.E{Key: "socket", Value: strct.Socket})
+			} else {
+				return nil, errors.New("значение не принадлежит типу Motherboard")
+			}
+		}
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *ConfiguratorService) getMotherboard(mapDataComponents map[string]interface{}) (interface{}, error) {
+	//получаем ключевые поля для материнки по которым будем фильтровать
+	component := "motherboard"
+
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key)
+
+		switch key {
+		case "processor":
+			if strct, ok := value.(*entity.Processor); ok {
+				filter = append(filter, bson.E{Key: "socket", Value: strct.Socket})
+			} else {
+				return nil, errors.New("значение не принадлежит типу Processor")
+			}
+		case "ram":
+			if strct, ok := value.(*entity.Ram); ok {
+				filter = append(filter, bson.E{Key: "ramtype", Value: strct.Type})
+			} else {
+				return nil, errors.New("значение не принадлежит типу Ram")
+			}
+		}
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *ConfiguratorService) getCooler(mapDataComponents map[string]interface{}) (interface{}, error) {
+	//получаем ключевые поля для материнки по которым будем фильтровать
+	component := "cooler"
+
+	filter := bson.D{}
+	for key, value := range mapDataComponents {
+		fmt.Println(key)
+
+		switch key {
+		case "processor":
+			if strct, ok := value.(*entity.Processor); ok {
+				filter = append(filter, bson.E{Key: "socket", Value: strct.Socket})
+			} else {
+				return nil, errors.New("значение не принадлежит типу Processor")
+			}
+		case "motherboard":
+			if strct, ok := value.(*entity.Motherboard); ok {
+				filter = append(filter, bson.E{Key: "socket", Value: strct.Socket})
+			} else {
+				return nil, errors.New("значение не принадлежит типу Motherboard")
+			}
+		}
+	}
+
+	strct, err := utils.GetTypeComponent(component)
+	if err != nil {
+		return nil, errors.New("ошибка определения типа компонента")
+	}
+
+	result, err := s.repos.FindAll(component, filter, strct)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // func (s *UserService) SignUp(gc *gin.Context) (string, error) {
@@ -150,7 +472,7 @@ func (s *ConfiguratorService) getMotherboard(mapDataComponents map[string]interf
 // 		return "", errors.New("пароли не совпадают")
 // 	}
 
-// 	componentStruct, err := utils.GetStructCompnent(user)
+// 	componentStruct, err := utils.GetStruct(user)
 // 	if err != nil {
 // 		return "", err
 // 	}
@@ -186,7 +508,7 @@ func (s *ConfiguratorService) getMotherboard(mapDataComponents map[string]interf
 // 	token.EndTime = int(endTime)
 // 	token.Create = int(create)
 
-// 	tokenStruct, err := utils.GetStructCompnent(token)
+// 	tokenStruct, err := utils.GetStruct(token)
 // 	if err != nil {
 // 		return "", err
 // 	}
